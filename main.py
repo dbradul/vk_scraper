@@ -69,6 +69,8 @@ def normalize_row(row, config):
     vals = []
     for field in config.csv_fields:
         if field in row:
+            if type(row[field]) == str:
+                row[field] = row[field].replace("\n", ' ')
             vals.append(row[field])
         else:
             vals.append('')
@@ -88,11 +90,11 @@ def main():
         writer = csv.writer(f)
         writer.writerow(_config.csv_fields)
         idx = 1
-        try:
-            for count, users in search_users(vk_client, _config):
-                user_ids = [u['id'] for u in users]
-                user_infos = vk_client.users.get(user_ids=user_ids, fields=_config.fetch_fields)
-                for user_info in user_infos:
+        for count, users in search_users(vk_client, _config):
+            user_ids = [u['id'] for u in users]
+            user_infos = vk_client.users.get(user_ids=user_ids, fields=_config.fetch_fields)
+            for user_info in user_infos:
+                try:
                     row = unwind_value(user_info)
                     row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
                     row['first_post_created'] = get_1st_post_ts(vk_client, user_info)
@@ -100,8 +102,8 @@ def main():
                     print(f'Processed user {idx}/{count}')
                     # fields.update(set(row.keys()))
                     idx += 1
-        except Exception as ex:
-            print(f'ERROR: id={user_info["id"]}, {ex}')
+                except Exception as ex:
+                    print(f'ERROR: id={user_info["id"]}, {ex}')
 
 
 if __name__ == '__main__':

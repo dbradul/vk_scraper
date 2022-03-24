@@ -1,7 +1,7 @@
 data = {
   "search_criteria": {
     "q": "Владимир",
-    # "hometown": "Одесса",
+    "hometown": "Киев",
     "online": 1,
     # "city": 314,
   },
@@ -105,6 +105,17 @@ data = {
      "universities_3_graduation",
      "universities_3_id",
      "universities_3_name",
+     "universities_4_chair",
+     "universities_4_chair_name",
+     "universities_4_city",
+     "universities_4_country",
+     "universities_4_education_form",
+     "universities_4_education_status",
+     "universities_4_faculty",
+     "universities_4_faculty_name",
+     "universities_4_graduation",
+     "universities_4_id",
+     "universities_4_name",
      "university",
      "university_name"
   ],
