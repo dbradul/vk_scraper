@@ -129,4 +129,7 @@ dmypy.json
 .pyre/
 vk_config.v2.json
 .idea/
-result.csv
+*.csv
+*.csv#
+logfile.log
+todo

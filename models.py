@@ -1,13 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-# class SearchCriteria(BaseModel):
-#     q: Optional[str]
-#     count: Optional[int] = 100
-#     hometown: Optional[str]
-#     hometown: Optional[str]
-#     university_year: Optional[int]
-#     online: Optional[int] = 0
 
 class Mapping(BaseModel):
     city: dict
@@ -18,6 +11,10 @@ class Config(BaseModel):
     search_criteria: dict
     search_count: Optional[int] = 100
     # https://vk.com/dev/fields
-    fetch_fields: str
-    csv_fields: Optional[List[str]] = []
-    mapping: Mapping
+    fetch_fields: List[str]
+    csv_fields: List[str]
+    custom_csv_fields: Optional[List[str]] = []
+
+class VkResponse(BaseModel):
+    count: int
+    items: List[dict]
