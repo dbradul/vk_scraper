@@ -16,14 +16,19 @@ python3 main.py
 ```
 
 
-### To fetch users using ids from provided csv file:
+### To fetch users using ids from csv-file:
 ```
 python3 main.py csv_file
 ```
 - `csv_file`: input file with column `id`, which is used to fetch user info 
 
+Example:
+```
+python3 main.py ParsedUsersToFind.csv
+```
 
-### To fetch users using column from provided csv file:
+
+### To fetch users using column from csv-file:
 ```
 python3 main.py csv_file column_name
 ```
@@ -32,7 +37,7 @@ python3 main.py csv_file column_name
 
 Example:
 ```
-python3 main.py ParsedTanksToFind.csv screen_name
+python3 main.py ParsedUsersToFind.csv screen_name
 ```
 
 

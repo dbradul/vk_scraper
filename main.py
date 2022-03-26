@@ -21,63 +21,22 @@ column_name = 'id'
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-def search_users(client, _config):
-    page_size = _config.search_count
+def search_entities(search_func, search_params, return_count=False):
+    data_available = True
     offset = 0
-    params = {k: v for k, v in _config.search_criteria.items() if v}
-    params['count'] = page_size
-    response = VkResponse(**client.users.search(**params))
-    yield response.count, response.items
-    processed = len(response.items)
-    total = response.count
-    while (processed < total) and len(response.items) > 0:
+    while data_available:
+        response = VkResponse(**search_func(**search_params))
+        total = response.count
+        result = (response.count, response.items) if return_count else response.items
+        yield result
         offset += len(response.items)
-        params['offset'] = offset
-        response = VkResponse(**client.users.search(**params))
-        yield response.count, response.items
-        processed += len(response.items)
-
-
-def dump_cities(client, _config):
-    page_size = _config.search_count
-    offset = 0
-    # params = {k: v for k, v in _config.search_criteria.items() if v}
-    params = {'country_id': 1, 'need_all': 0}
-    params['count'] = page_size
-    response = VkResponse(**client.database.getCities(**params))
-    yield response.count, response.items
-    processed = len(response.items)
-    total = response.count
-    while (processed < total) and len(response.items) > 0:
-        offset += len(response.items)
-        params['offset'] = offset
-        response = VkResponse(**client.database.getCities(**params))
-        yield response.count, response.items
-        processed += len(response.items)
-
-
-def dump_universities(client, _config, city_id):
-    page_size = _config.search_count
-    offset = 0
-    # params = {k: v for k, v in _config.search_criteria.items() if v}
-    params = {'country_id': 1, 'city_id': city_id}
-    params['count'] = page_size
-    response = VkResponse(**client.database.getUniversities(**params))
-    yield response.items
-    processed = len(response.items)
-    total = response.count
-    while (processed < total) and len(response.items) > 0:
-        offset += len(response.items)
-        params['offset'] = offset
-        response = VkResponse(**client.database.getUniversities(**params))
-        yield response.items
-        processed += len(response.items)
+        search_params['offset'] = offset
+        data_available = (offset < total) and len(response.items) > 0
 
 
 def get_post_range_ts(client, user_info):
     result_recent, result_latest = None, None
     try:
-        # posts = client.wall.get(owner_id=user_info['id'])
         response = VkResponse(**client.wall.get(owner_id=user_info['id']))
         if response.count > 0:
             recent_post = response.items[0]
@@ -145,9 +104,12 @@ def fetch_from_source(vk_client, _config, users_sourse):
 def dump_mappings(vk_client, config):
     dumped_cities = {}
     dumped_unis = {}
-    for num, cities in dump_cities(vk_client, config):
+
+    city_params = {'country_id': 1, 'need_all': 0, 'count': config.search_count}
+    for cities in search_entities(vk_client.database.getCities, city_params):
         for city in cities:
-            for universities in dump_universities(vk_client, config, city['id']):
+            uni_params = {'country_id': 1, 'city_id': city['id'], 'count': config.search_count}
+            for universities in search_entities(vk_client.database.getUniversities, uni_params):
                 for uni in universities:
                     dumped_cities[str(city['id'])] = city['title']
                     dumped_unis[str(uni['id'])] = uni['title']
@@ -183,12 +145,18 @@ def main():
         param = sys.argv[1]
         if param == 'dump':
             dump_mappings(vk_client, _config)
+            return
         else:
             if len(sys.argv) > 2:
                 column_name = sys.argv[2]
             users_sourse = functools.partial(read_users_from_csv, param)
     else:
-        users_sourse = functools.partial(search_users, vk_client, _config)
+        params = {k: v for k, v in _config.search_criteria.items() if v}
+        params.update({'count': _config.search_count})
+        users_sourse = functools.partial(
+            search_entities,
+            vk_client.users.search, params, return_count=True
+        )
 
     fetch_from_source(vk_client, _config, users_sourse)
 

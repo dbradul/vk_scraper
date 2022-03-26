@@ -1,13 +1,11 @@
 data = {
-    # https://vk.com/dev/users.search
     "search_criteria": {
-        # "q": "Владимир",
+        "q": "Владимир",
         # "hometown": "Киев",
         "online": 1,
-        "university": 2903,
+        # "university": 2903,
         # "city": 314,
     },
-    # https://vk.com/dev/fields
     "fetch_fields": [
         "about",
         "activity",
