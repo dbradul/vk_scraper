@@ -37,4 +37,7 @@ def read_users_from_csv(filename):
     with open(filename, 'r') as f:
         reader = csv.DictReader(f, quotechar='"', delimiter=',')
         users = [line for line in reader]
-    yield len(users), users
+    chunk_size = 100
+    for x in range(0, len(users), chunk_size):
+        users_chunk = users[x: x + chunk_size]
+        yield len(users), users_chunk
