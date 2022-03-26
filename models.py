@@ -7,10 +7,8 @@ class Mapping(BaseModel):
     country: dict
 
 class Config(BaseModel):
-    # https://vk.com/dev/users.search
     search_criteria: dict
     search_count: Optional[int] = 100
-    # https://vk.com/dev/fields
     fetch_fields: List[str]
     csv_fields: List[str]
     custom_csv_fields: Optional[List[str]] = []
