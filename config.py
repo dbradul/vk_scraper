@@ -61,7 +61,7 @@ data = {
         "verified",
         "wall_comments"
     ],
-    "search_count": 100,
+    "search_count": 1000,
     "csv_fields": [
         "about",
         "activities",
