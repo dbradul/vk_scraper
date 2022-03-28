@@ -17,6 +17,7 @@ class Config(BaseModel):
     search_count: Optional[int] = 100
     fetch_fields: List[str]
     csv_fields: List[str]
+    resume_from: Optional[str] = ''
     custom_csv_fields: Optional[List[str]] = []
 
 

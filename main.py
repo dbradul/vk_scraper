@@ -164,7 +164,7 @@ def main():
         else:
             if len(sys.argv) > 2:
                 column_name = sys.argv[2]
-            users_sourse = functools.partial(read_users_from_csv, param, vk_client._config.search_count, column_name)
+            users_sourse = functools.partial(read_users_from_csv, param, vk_client._config, column_name)
     else:
         params = {k: v for k, v in vk_client._config.search_criteria.items() if v}
         params.update({'count': vk_client._config.search_count})

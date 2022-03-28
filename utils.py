@@ -43,16 +43,17 @@ def unwind_value(d, prefix=''):
     return result
 
 
-def read_users_from_csv(filename, search_count, column='id'):
+def read_users_from_csv(filename, config, column='id'):
     with open(filename, 'r') as f:
         reader = csv.DictReader(f, quotechar='"', delimiter=',')
         users = [line for line in reader]
-    resume_from = 'id42651758'
-    resumed_users = itertools.dropwhile(
-        lambda x: x[column] != resume_from, users
-    )
-    users = list(resumed_users)
-    chunk_size = search_count
+    if config.resume_from:
+        resumed_users = itertools.dropwhile(
+            lambda x: x[column] != config.resume_from, users
+        )
+        next(resumed_users)
+        users = list(resumed_users)
+    chunk_size = config.search_count
     for x in range(0, len(users), chunk_size):
         users_chunk = users[x: x + chunk_size]
         yield len(users), users_chunk

@@ -62,6 +62,7 @@ data = {
         "wall_comments"
     ],
     "search_count": 1000,
+    "resume_from": 'id308441212',
     "csv_fields": [
         "about",
         "activities",
