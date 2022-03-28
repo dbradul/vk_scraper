@@ -103,7 +103,6 @@ def fetch_from_source(vk_client, users_sourse):
                     writer.writerow(normalize_row(row, vk_client._config))
                     logger.info(f'Processed user {idx}/{count}')
                     # fields.update(set(row.keys()))
-                    idx += 1
                 except RateLimitException as ex:
                     raise
                 except Exception as ex:
@@ -111,6 +110,8 @@ def fetch_from_source(vk_client, users_sourse):
                                  f' id={user_info.get("id")},'
                                  f' first_name={user_info.get("first_name")},'
                                  f' deactivated={user_info.get("deactivated")}, {ex}')
+                finally:
+                    idx += 1
 
     # print(list(fields))
     logger.info('\nSUCCESSFULLY FINISHED!')
