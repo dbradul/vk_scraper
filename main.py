@@ -1,73 +1,21 @@
 import csv
 import functools
 import json
-import os
 import sys
 from collections import defaultdict
-from pprint import pprint as pp
 from io import StringIO
+from pprint import pprint as pp
 
-import vk_api
 from dotenv import load_dotenv
 
-import config
-import models
-from models import VkResponse
-from utils import from_unix_time, unwind_value, logger, read_users_from_csv, login_retrier
+from models import VkResponse, VkClientProxy
+from utils import from_unix_time, unwind_value, logger, read_users_from_csv, login_retrier, repack_exc, \
+    RateLimitException
 
 load_dotenv()
 
 column_name = 'id'
 
-
-class VkClientProxy:
-    PROFILE_PHONE_NUMBER_PREFIX = 'USER_PHONE_NUMBER'
-    PROFILE_PASSWORD_PREFIX = 'USER_PASSWORD'
-
-    def __init__(self):
-        self._obj = None
-        self._config = None
-        self._session = None
-        self._accounts = []
-
-    def __getattr__(self, item):
-        return getattr(self._obj, item)
-
-    def set_proxy_obj(self, instance):
-        if isinstance(instance, dict):
-            for k, v in instance.items():
-                setattr(self, k, v)
-        else:
-            self._obj = instance
-
-    def load_accounts(self):
-        accounts = []
-        for i in range(1, 10):
-            env_phone_number_var_name = f'{self.PROFILE_PHONE_NUMBER_PREFIX}_{i}'
-            env_password_var_name = f'{self.PROFILE_PASSWORD_PREFIX}_{i}'
-            if os.getenv(env_phone_number_var_name):
-                accounts.append((
-                    os.getenv(env_phone_number_var_name),
-                    os.getenv(env_password_var_name)
-                ))
-            else:
-                break
-
-        self._accounts = accounts
-
-    def next_account(self):
-        result = None, None
-        if self._accounts:
-            result = self._accounts.pop(0)
-            self._accounts.append(result)
-
-        return result
-
-    def auth(self):
-        self._session = vk_api.VkApi(*self.next_account())
-        self._session.auth()
-        self.set_proxy_obj(self._session.get_api())
-        self._config = models.Config(**config.data)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -85,6 +33,7 @@ def search_entities(search_func, search_params, return_count=False):
 
 
 @login_retrier
+@repack_exc
 def get_post_range_ts(client, user_info):
     result_recent, result_latest = None, None
     try:
@@ -155,6 +104,8 @@ def fetch_from_source(vk_client, users_sourse):
                     logger.info(f'Processed user {idx}/{count}')
                     # fields.update(set(row.keys()))
                     idx += 1
+                except RateLimitException as ex:
+                    raise
                 except Exception as ex:
                     logger.error(f'Error while fetching user'
                                  f' id={user_info.get("id")},'
@@ -213,7 +164,7 @@ def main():
         else:
             if len(sys.argv) > 2:
                 column_name = sys.argv[2]
-            users_sourse = functools.partial(read_users_from_csv, param, vk_client._config.search_count)
+            users_sourse = functools.partial(read_users_from_csv, param, vk_client._config.search_count, column_name)
     else:
         params = {k: v for k, v in vk_client._config.search_criteria.items() if v}
         params.update({'count': vk_client._config.search_count})
