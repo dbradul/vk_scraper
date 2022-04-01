@@ -210,7 +210,7 @@ def search_by_name(client, filename):
         COLUMN_NAME_SURNAME,
         COLUMN_NAME_BDAY
     ]
-    with open('result.csv', 'w+') as f:
+    with open('result.csv', 'w+', newline='') as f:
         # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
         writer = csv.writer(f)
         writer.writerow(EXTRA_FIELDS + client._config.csv_fields + client._config.custom_csv_fields)
@@ -253,6 +253,10 @@ def main():
             if len(sys.argv) > 2:
                 filepath = sys.argv[2]
                 search_by_name(vk_client, filepath)
+                # with open('./results.csv', 'r+') as f:
+                #     content = f.read()
+                # with open('./results.csv', 'w+') as f:
+                #     content.replace('0x13', '').replace('0x10', '\n').split('\n')
                 return
             else:
                 logger.error('Filepath is missing for "search_by_name" mode')
