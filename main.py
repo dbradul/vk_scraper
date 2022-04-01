@@ -30,8 +30,23 @@ def search_entities(search_func, search_params, return_count=False):
         result = (response.count, response.items) if return_count else response.items
         yield result
         offset += len(response.items)
+        # offset += response.count
         search_params['offset'] = offset
-        data_available = (offset < total) and len(response.items) > 0
+        data_available = (offset <= total) and len(response.items) > 0
+
+
+def search_entities2(search_func, search_params, return_count=False):
+    data_available = True
+    offset = 0
+    while data_available:
+        response = VkResponse(**search_func(**search_params))
+        # total = response.count
+        result = (response.count, response.items) if return_count else response.items
+        yield result
+        # offset += len(response.items)
+        offset += response.count
+        search_params['offset'] = offset
+        data_available = len(response.items) > 0
 
 
 @login_retrier
@@ -141,7 +156,7 @@ def fetch_from_source_append_file(vk_client, users_sourse, writer, extra_values=
                 row['recent_post_created'], row['earliest_post_created'] = \
                     get_post_range_ts(vk_client, user_info)
                 writer.writerow(extra_values + normalize_row(row, vk_client._config))
-                logger.info(f'Processed user {row.get("first_name")} {row.get("last_name")}')
+                logger.info(f'Processed user {row.get("first_name")} {row.get("last_name")} {row.get("id")}')
                 # fields.update(set(row.keys()))
             except RateLimitException as ex:
                 raise
@@ -154,7 +169,7 @@ def fetch_from_source_append_file(vk_client, users_sourse, writer, extra_values=
                 idx += 1
 
     # print(list(fields))
-    logger.info('\nSUCCESSFULLY FINISHED!')
+    # logger.info('\nSUCCESSFULLY FINISHED!')
 
 
 def dump_mappings(vk_client: VkClientProxy):
@@ -211,7 +226,7 @@ def search_by_name(client, filename):
                     'birth_year': birth_date.year
                 }
                 users_sourse = functools.partial(
-                    search_entities,
+                    search_entities2,
                     client.users.search, params, return_count=True
                 )
 
