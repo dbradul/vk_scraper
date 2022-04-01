@@ -3,6 +3,7 @@ import functools
 import json
 import sys
 from collections import defaultdict
+from datetime import datetime
 from io import StringIO
 from pprint import pprint as pp
 
@@ -15,8 +16,9 @@ from utils import from_unix_time, unwind_value, logger, read_users_from_csv, log
 load_dotenv()
 
 column_name = 'id'
-
-
+COLUMN_NAME_NAME = 'Імя'
+COLUMN_NAME_SURNAME = 'Прізвище'
+COLUMN_NAME_BDAY = 'Дата'
 
 # ----------------------------------------------------------------------------------------------------------------------
 def search_entities(search_func, search_params, return_count=False):
@@ -117,6 +119,44 @@ def fetch_from_source(vk_client, users_sourse):
     logger.info('\nSUCCESSFULLY FINISHED!')
 
 
+def fetch_from_source_append_file(vk_client, users_sourse, writer, extra_values=None):
+    # fields = set()
+    extra_values = extra_values or []
+    # with open('result.csv', 'w+') as f:
+    #     # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+    #     writer = csv.writer(f)
+    #     writer.writerow(extra_fields + vk_client._config.csv_fields + vk_client._config.custom_csv_fields)
+    idx = 1
+    for count, users in users_sourse():
+        user_ids = [u[column_name] for u in users]
+        # user_infos = vk_client.users.get(
+        #     user_ids=user_ids,
+        #     fields=', '.join(_config.fetch_fields
+        # ))
+        user_infos = vk_get_users(vk_client, user_ids)
+        for user_info in user_infos:
+            try:
+                row = unwind_value(user_info)
+                row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
+                row['recent_post_created'], row['earliest_post_created'] = \
+                    get_post_range_ts(vk_client, user_info)
+                writer.writerow(extra_values + normalize_row(row, vk_client._config))
+                logger.info(f'Processed user {row.get("first_name")} {row.get("last_name")}')
+                # fields.update(set(row.keys()))
+            except RateLimitException as ex:
+                raise
+            except Exception as ex:
+                logger.error(f'Error while fetching user'
+                             f' id={user_info.get("id")},'
+                             f' first_name={user_info.get("first_name")},'
+                             f' deactivated={user_info.get("deactivated")}, {ex}')
+            finally:
+                idx += 1
+
+    # print(list(fields))
+    logger.info('\nSUCCESSFULLY FINISHED!')
+
+
 def dump_mappings(vk_client: VkClientProxy):
     dumped_cities = {}
     dumped_unis = {}
@@ -149,6 +189,38 @@ def dump_mappings(vk_client: VkClientProxy):
         f.write(stream.read().replace("'", '"'))
 
 
+def search_by_name(client, filename):
+    EXTRA_FIELDS = [
+        COLUMN_NAME_NAME,
+        COLUMN_NAME_SURNAME,
+        COLUMN_NAME_BDAY
+    ]
+    with open('result.csv', 'w+') as f:
+        # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+        writer = csv.writer(f)
+        writer.writerow(EXTRA_FIELDS + client._config.csv_fields + client._config.custom_csv_fields)
+
+        for count, users in read_users_from_csv(filename, client._config):
+            for user in users:
+                birth_date = datetime.strptime(user.get(COLUMN_NAME_BDAY, ''), '%d.%m.%Y')
+                params= {
+                    'count': client._config.search_count,
+                    'q': f'{user.get(COLUMN_NAME_SURNAME, "")} {user.get(COLUMN_NAME_NAME, "")}',
+                    'birth_day': birth_date.day,
+                    'birth_month': birth_date.month,
+                    'birth_year': birth_date.year
+                }
+                users_sourse = functools.partial(
+                    search_entities,
+                    client.users.search, params, return_count=True
+                )
+
+                fetch_from_source_append_file(
+                    client,
+                    users_sourse,
+                    writer,
+                    extra_values=[user.get(COLUMN_NAME_NAME, ''), user.get(COLUMN_NAME_SURNAME, ''), user.get(COLUMN_NAME_BDAY, '')])
+
 
 def main():
     global column_name
@@ -162,6 +234,13 @@ def main():
         if param == 'dump':
             dump_mappings(vk_client)
             return
+        elif param == '--search_by_name':
+            if len(sys.argv) > 2:
+                filepath = sys.argv[2]
+                search_by_name(vk_client, filepath)
+                return
+            else:
+                logger.error('Filepath is missing for "search_by_name" mode')
         else:
             if len(sys.argv) > 2:
                 column_name = sys.argv[2]
