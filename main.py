@@ -15,37 +15,23 @@ from utils import from_unix_time, unwind_value, logger, read_users_from_csv, log
 
 load_dotenv()
 
-column_name = 'id'
+ID_COLUMN_NAME = 'id'
+COLUMN_NAME_PARENT_ID = 'ParentId'
 COLUMN_NAME_NAME = 'Імя'
 COLUMN_NAME_SURNAME = 'Прізвище'
 COLUMN_NAME_BDAY = 'Дата'
+RESULT_FILEPATH = 'result.csv'
 
-# ----------------------------------------------------------------------------------------------------------------------
-def search_entities(search_func, search_params, return_count=False):
+
+def execute_func(func, params, return_count=False):
     data_available = True
     offset = 0
     while data_available:
-        response = VkResponse(**search_func(**search_params))
-        total = response.count
+        response = VkResponse(**func(**params))
         result = (response.count, response.items) if return_count else response.items
         yield result
-        offset += len(response.items)
-        # offset += response.count
-        search_params['offset'] = offset
-        data_available = (offset <= total) and len(response.items) > 0
-
-
-def search_entities2(search_func, search_params, return_count=False):
-    data_available = True
-    offset = 0
-    while data_available:
-        response = VkResponse(**search_func(**search_params))
-        # total = response.count
-        result = (response.count, response.items) if return_count else response.items
-        yield result
-        # offset += len(response.items)
         offset += response.count
-        search_params['offset'] = offset
+        params['offset'] = offset
         data_available = len(response.items) > 0
 
 
@@ -90,34 +76,34 @@ def normalize_row(row, config):
 
 
 @login_retrier
-def vk_get_users(vk_client, user_ids):
+def vk_get_users(vk_client, user_ids, fields):
     return vk_client.users.get(
         user_ids=user_ids,
-        fields=', '.join(vk_client._config.fetch_fields)
+        fields=fields
     )
 
 
 def fetch_from_source(vk_client, users_sourse):
     # fields = set()
-    with open('result.csv', 'w+') as f:
+    with open(RESULT_FILEPATH, 'w+') as f:
         # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
         writer = csv.writer(f)
-        writer.writerow(vk_client._config.csv_fields + vk_client._config.custom_csv_fields)
+        writer.writerow(vk_client.config.csv_fields + vk_client.config.custom_csv_fields)
         idx = 1
         for count, users in users_sourse():
-            user_ids = [u[column_name] for u in users]
+            user_ids = [u[ID_COLUMN_NAME] for u in users]
             # user_infos = vk_client.users.get(
             #     user_ids=user_ids,
             #     fields=', '.join(_config.fetch_fields
             # ))
-            user_infos = vk_get_users(vk_client, user_ids)
+            user_infos = vk_get_users(vk_client, user_ids, vk_client.config.get_fetch_fields())
             for user_info in user_infos:
                 try:
                     row = unwind_value(user_info)
                     row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
                     row['recent_post_created'], row['earliest_post_created'] = \
                         get_post_range_ts(vk_client, user_info)
-                    writer.writerow(normalize_row(row, vk_client._config))
+                    writer.writerow(normalize_row(row, vk_client.config))
                     logger.info(f'Processed user {idx}/{count}')
                     # fields.update(set(row.keys()))
                 except RateLimitException as ex:
@@ -134,53 +120,32 @@ def fetch_from_source(vk_client, users_sourse):
     logger.info('\nSUCCESSFULLY FINISHED!')
 
 
-def fetch_from_source_append_file(vk_client, users_sourse, writer, extra_values=None):
-    # fields = set()
-    extra_values = extra_values or []
-    # with open('result.csv', 'w+') as f:
-    #     # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
-    #     writer = csv.writer(f)
-    #     writer.writerow(extra_fields + vk_client._config.csv_fields + vk_client._config.custom_csv_fields)
-    idx = 1
-    for count, users in users_sourse():
-        user_ids = [u[column_name] for u in users]
-        # user_infos = vk_client.users.get(
-        #     user_ids=user_ids,
-        #     fields=', '.join(_config.fetch_fields
-        # ))
-        user_infos = vk_get_users(vk_client, user_ids)
-        for user_info in user_infos:
-            try:
-                row = unwind_value(user_info)
-                row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
-                row['recent_post_created'], row['earliest_post_created'] = \
-                    get_post_range_ts(vk_client, user_info)
-                writer.writerow(extra_values + normalize_row(row, vk_client._config))
-                logger.info(f'Processed user {row.get("first_name")} {row.get("last_name")} {row.get("id")}')
-                # fields.update(set(row.keys()))
-            except RateLimitException as ex:
-                raise
-            except Exception as ex:
-                logger.error(f'Error while fetching user'
-                             f' id={user_info.get("id")},'
-                             f' first_name={user_info.get("first_name")},'
-                             f' deactivated={user_info.get("deactivated")}, {ex}')
-            finally:
-                idx += 1
-
-    # print(list(fields))
-    # logger.info('\nSUCCESSFULLY FINISHED!')
+def dump_user_info(client, writer, user_info, extra_values=None):
+    try:
+        row = unwind_value(user_info)
+        row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
+        row['recent_post_created'], row['earliest_post_created'] = \
+            get_post_range_ts(client, user_info)
+        writer.writerow(extra_values + normalize_row(row, client.config))
+        logger.info(f'Processed user {row.get("first_name")} {row.get("last_name")},  id={row.get("id")}')
+    except RateLimitException as ex:
+        raise
+    except Exception as ex:
+        logger.error(f'Error while fetching user'
+                     f' id={user_info.get("id")},'
+                     f' first_name={user_info.get("first_name")},'
+                     f' deactivated={user_info.get("deactivated")}, {ex}')
 
 
 def dump_mappings(vk_client: VkClientProxy):
     dumped_cities = {}
     dumped_unis = {}
 
-    city_params = {'country_id': 1, 'need_all': 0, 'count': vk_client._config.search_count}
-    for cities in search_entities(vk_client.database.getCities, city_params):
+    city_params = {'country_id': 1, 'need_all': 0, 'count': vk_client.config.search_count}
+    for cities in execute_func(vk_client.database.getCities, city_params):
         for city in cities:
-            uni_params = {'country_id': 1, 'city_id': city['id'], 'count': vk_client._config.search_count}
-            for universities in search_entities(vk_client.database.getUniversities, uni_params):
+            uni_params = {'country_id': 1, 'city_id': city['id'], 'count': vk_client.config.search_count}
+            for universities in execute_func(vk_client.database.getUniversities, uni_params):
                 for uni in universities:
                     dumped_cities[str(city['id'])] = city['title']
                     dumped_unis[str(uni['id'])] = uni['title']
@@ -210,35 +175,57 @@ def search_by_name(client, filename):
         COLUMN_NAME_SURNAME,
         COLUMN_NAME_BDAY
     ]
-    with open('result.csv', 'w+', newline='') as f:
+    with open(RESULT_FILEPATH, 'w+', newline='') as f:
         # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
         writer = csv.writer(f)
-        writer.writerow(EXTRA_FIELDS + client._config.csv_fields + client._config.custom_csv_fields)
+        writer.writerow(EXTRA_FIELDS + client.config.csv_fields + client.config.custom_csv_fields)
 
-        for count, users in read_users_from_csv(filename, client._config):
+        for count, users in read_users_from_csv(filename, client.config):
             for user in users:
                 birth_date = datetime.strptime(user.get(COLUMN_NAME_BDAY, ''), '%d.%m.%Y')
-                params= {
-                    'count': client._config.search_count,
+                params= client.get_params({
                     'q': f'{user.get(COLUMN_NAME_SURNAME, "")} {user.get(COLUMN_NAME_NAME, "")}',
                     'birth_day': birth_date.day,
                     'birth_month': birth_date.month,
                     'birth_year': birth_date.year
-                }
-                users_sourse = functools.partial(
-                    search_entities2,
-                    client.users.search, params, return_count=True
-                )
+                })
 
-                fetch_from_source_append_file(
-                    client,
-                    users_sourse,
-                    writer,
-                    extra_values=[user.get(COLUMN_NAME_NAME, ''), user.get(COLUMN_NAME_SURNAME, ''), user.get(COLUMN_NAME_BDAY, '')])
+                for users in execute_func(client.users.search, params):
+                    user_ids = [u[ID_COLUMN_NAME] for u in users]
+                    user_infos = vk_get_users(client, user_ids, client.config.get_fetch_fields())
+                    for user_info in user_infos:
+                        dump_user_info(
+                            client,
+                            writer,
+                            user_info,
+                            extra_values=[user.get(COLUMN_NAME_NAME, ''), user.get(COLUMN_NAME_SURNAME, ''), user.get(COLUMN_NAME_BDAY, '')]
+                        )
+
+
+def find_friends(client: VkClientProxy, filename):
+    EXTRA_FIELDS = [
+        COLUMN_NAME_PARENT_ID
+    ]
+    with open(RESULT_FILEPATH, 'w+', newline='') as f:
+        # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+        writer = csv.writer(f)
+        writer.writerow(EXTRA_FIELDS + client.config.csv_fields + client.config.custom_csv_fields)
+
+        for count, users in read_users_from_csv(filename, client.config):
+            for user in users:
+                params = client.get_params({'user_id': user[ID_COLUMN_NAME]})
+                for friends in execute_func(client.friends.get, params):
+                    user_infos = vk_get_users(
+                        client,
+                        user_ids=friends,
+                        fields=client.config.get_fetch_fields()
+                    )
+                    for user_info in user_infos:
+                        dump_user_info(client, writer, user_info, extra_values=[user[ID_COLUMN_NAME]])
 
 
 def main():
-    global column_name
+    global ID_COLUMN_NAME
 
     vk_client = VkClientProxy()
     vk_client.load_accounts()
@@ -253,22 +240,26 @@ def main():
             if len(sys.argv) > 2:
                 filepath = sys.argv[2]
                 search_by_name(vk_client, filepath)
-                # with open('./results.csv', 'r+') as f:
-                #     content = f.read()
-                # with open('./results.csv', 'w+') as f:
-                #     content.replace('0x13', '').replace('0x10', '\n').split('\n')
                 return
             else:
                 logger.error('Filepath is missing for "search_by_name" mode')
+        elif param == '--find_friends':
+            if len(sys.argv) > 2:
+                filepath = sys.argv[2]
+                find_friends(vk_client, filepath)
+                return
+            else:
+                logger.error('Filepath is missing for "find_friends" mode')
         else:
             if len(sys.argv) > 2:
-                column_name = sys.argv[2]
-            users_sourse = functools.partial(read_users_from_csv, param, vk_client._config, column_name)
+                ID_COLUMN_NAME = sys.argv[2]
+            users_sourse = functools.partial(read_users_from_csv, param, vk_client.config, ID_COLUMN_NAME)
     else:
-        params = {k: v for k, v in vk_client._config.search_criteria.items() if v}
-        params.update({'count': vk_client._config.search_count})
+        params = {k: v for k, v in vk_client.config.search_criteria.items() if v}
+        params.update({'count': vk_client.config.search_count})
         users_sourse = functools.partial(
-            search_entities,
+            # search_entities,
+            execute_func,
             vk_client.users.search, params, return_count=True
         )
 

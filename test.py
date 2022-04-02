@@ -8,7 +8,7 @@ import models
 
 load_dotenv()
 
-column_name = 'id'
+id_column_name = 'id'
 
 
 class VkClientProxy:
@@ -65,7 +65,7 @@ class VkClientProxy:
 
 
 def main():
-    global column_name
+    global id_column_name
 
     vk_client = VkClientProxy()
     vk_client.load_accounts()

@@ -2,7 +2,7 @@ import os
 
 import vk_api
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Any, Union
 
 import config
 
@@ -20,10 +20,13 @@ class Config(BaseModel):
     resume_from: Optional[str] = ''
     custom_csv_fields: Optional[List[str]] = []
 
+    def get_fetch_fields(self):
+        return ', '.join(self.fetch_fields)
+
 
 class VkResponse(BaseModel):
     count: int
-    items: List[dict]
+    items: List[Union[int, dict]]
 
 
 class VkClientProxy:
@@ -32,9 +35,9 @@ class VkClientProxy:
 
     def __init__(self):
         self._obj = None
-        self._config = None
         self._session = None
         self._accounts = []
+        self.config: Config = None
 
     def __getattr__(self, item):
         return getattr(self._obj, item)
@@ -73,4 +76,10 @@ class VkClientProxy:
         self._session = vk_api.VkApi(*self.next_account())
         self._session.auth()
         self.set_proxy_obj(self._session.get_api())
-        self._config = Config(**config.data)
+        self.config = Config(**config.data)
+
+    def get_params(self, extra_params=None):
+        params = {'count': self.config.search_count}
+        if extra_params:
+            params.update(extra_params)
+        return params

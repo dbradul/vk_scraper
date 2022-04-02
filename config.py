@@ -36,6 +36,7 @@ data = {
         "interests",
         "last_name",
         "last_seen",
+        "last_seen_time",
         "lists",
         "movies",
         "music",
