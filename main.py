@@ -52,7 +52,7 @@ def get_post_range_ts(client, user_info):
             result_latest = str(from_unix_time(latest_post['date']))
     except Exception as ex:
         logger.error(f'Couldnt fetch user\'s posts: id={user_info["id"]}, {ex}')
-        raise
+        # raise
     return result_recent, result_latest
 
 
@@ -76,10 +76,10 @@ def normalize_row(row, config):
 
 
 @login_retrier
-def vk_get_users(vk_client, user_ids, fields):
+def vk_get_users(vk_client, user_ids):
     return vk_client.users.get(
         user_ids=user_ids,
-        fields=fields
+        fields=vk_client.config.get_fetch_fields()
     )
 
 
@@ -96,31 +96,34 @@ def fetch_from_source(vk_client, users_sourse):
             #     user_ids=user_ids,
             #     fields=', '.join(_config.fetch_fields
             # ))
-            user_infos = vk_get_users(vk_client, user_ids, vk_client.config.get_fetch_fields())
+            user_infos = vk_get_users(vk_client, user_ids)
             for user_info in user_infos:
-                try:
-                    row = unwind_value(user_info)
-                    row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
-                    row['recent_post_created'], row['earliest_post_created'] = \
-                        get_post_range_ts(vk_client, user_info)
-                    writer.writerow(normalize_row(row, vk_client.config))
-                    logger.info(f'Processed user {idx}/{count}')
-                    # fields.update(set(row.keys()))
-                except RateLimitException as ex:
-                    raise
-                except Exception as ex:
-                    logger.error(f'Error while fetching user'
-                                 f' id={user_info.get("id")},'
-                                 f' first_name={user_info.get("first_name")},'
-                                 f' deactivated={user_info.get("deactivated")}, {ex}')
-                finally:
-                    idx += 1
+                # try:
+                #     row = unwind_value(user_info)
+                #     row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
+                #     row['recent_post_created'], row['earliest_post_created'] = \
+                #         get_post_range_ts(vk_client, user_info)
+                #     writer.writerow(normalize_row(row, vk_client.config))
+                #     logger.info(f'Processed user {idx}/{count}')
+                #     # fields.update(set(row.keys()))
+                # except RateLimitException as ex:
+                #     raise
+                # except Exception as ex:
+                #     logger.error(f'Error while fetching user'
+                #                  f' id={user_info.get("id")},'
+                #                  f' first_name={user_info.get("first_name")},'
+                #                  f' deactivated={user_info.get("deactivated")}, {ex}')
+                # finally:
+                #     idx += 1
+
+                dump_user_info(vk_client, writer, user_info)
 
     # print(list(fields))
     logger.info('\nSUCCESSFULLY FINISHED!')
 
 
 def dump_user_info(client, writer, user_info, extra_values=None):
+    extra_values = extra_values or []
     try:
         row = unwind_value(user_info)
         row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
@@ -192,7 +195,7 @@ def search_by_name(client, filename):
 
                 for users in execute_func(client.users.search, params):
                     user_ids = [u[ID_COLUMN_NAME] for u in users]
-                    user_infos = vk_get_users(client, user_ids, client.config.get_fetch_fields())
+                    user_infos = vk_get_users(client, user_ids)
                     for user_info in user_infos:
                         dump_user_info(
                             client,
@@ -215,11 +218,7 @@ def find_friends(client: VkClientProxy, filename):
             for user in users:
                 params = client.get_params({'user_id': user[ID_COLUMN_NAME]})
                 for friends in execute_func(client.friends.get, params):
-                    user_infos = vk_get_users(
-                        client,
-                        user_ids=friends,
-                        fields=client.config.get_fetch_fields()
-                    )
+                    user_infos = vk_get_users(client, user_ids=friends)
                     for user_info in user_infos:
                         dump_user_info(client, writer, user_info, extra_values=[user[ID_COLUMN_NAME]])
 
