@@ -38,7 +38,7 @@ def execute_func(func, params, return_count=False):
 @login_retrier
 @repack_exc
 def get_post_range_ts(client, user_info):
-    result_recent, result_latest = None, None
+    result_recent, result_latest = 'NA', 'NA'
     try:
         response = VkResponse(**client.wall.get(owner_id=user_info['id']))
         if response.count > 0:
