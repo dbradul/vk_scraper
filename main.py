@@ -83,39 +83,17 @@ def vk_get_users(vk_client, user_ids):
     )
 
 
-def fetch_from_source(vk_client, users_sourse):
+def fetch_from_source(vk_client, users_source):
     # fields = set()
     with open(RESULT_FILEPATH, 'w+') as f:
         # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
         writer = csv.writer(f)
         writer.writerow(vk_client.config.csv_fields + vk_client.config.custom_csv_fields)
         idx = 1
-        for count, users in users_sourse():
+        for count, users in users_source():
             user_ids = [u[ID_COLUMN_NAME] for u in users]
-            # user_infos = vk_client.users.get(
-            #     user_ids=user_ids,
-            #     fields=', '.join(_config.fetch_fields
-            # ))
             user_infos = vk_get_users(vk_client, user_ids)
             for user_info in user_infos:
-                # try:
-                #     row = unwind_value(user_info)
-                #     row['last_seen_time'] = str(from_unix_time(row['last_seen_time']))
-                #     row['recent_post_created'], row['earliest_post_created'] = \
-                #         get_post_range_ts(vk_client, user_info)
-                #     writer.writerow(normalize_row(row, vk_client.config))
-                #     logger.info(f'Processed user {idx}/{count}')
-                #     # fields.update(set(row.keys()))
-                # except RateLimitException as ex:
-                #     raise
-                # except Exception as ex:
-                #     logger.error(f'Error while fetching user'
-                #                  f' id={user_info.get("id")},'
-                #                  f' first_name={user_info.get("first_name")},'
-                #                  f' deactivated={user_info.get("deactivated")}, {ex}')
-                # finally:
-                #     idx += 1
-
                 dump_user_info(vk_client, writer, user_info)
 
     # print(list(fields))
@@ -252,18 +230,18 @@ def main():
         else:
             if len(sys.argv) > 2:
                 ID_COLUMN_NAME = sys.argv[2]
-            users_sourse = functools.partial(read_users_from_csv, param, vk_client.config, ID_COLUMN_NAME)
+            users_source = functools.partial(read_users_from_csv, param, vk_client.config, ID_COLUMN_NAME)
     else:
         params = {k: v for k, v in vk_client.config.search_criteria.items() if v}
         params.update({'count': vk_client.config.search_count})
-        users_sourse = functools.partial(
+        users_source = functools.partial(
             # search_entities,
             execute_func,
             vk_client.users.search, params, return_count=True
         )
 
     try:
-        fetch_from_source(vk_client, users_sourse)
+        fetch_from_source(vk_client, users_source)
     except Exception as ex:
         logger.error(f'{ex}')
 
