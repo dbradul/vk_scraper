@@ -15,6 +15,7 @@ class Mapping(BaseModel):
 class Config(BaseModel):
     search_criteria: dict
     search_count: Optional[int] = 100
+    parse_posts: Optional[bool] = False
     fetch_fields: List[str]
     csv_fields: List[str]
     resume_from: Optional[str] = ''

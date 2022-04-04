@@ -40,20 +40,21 @@ def execute_func(func, params, return_count=False):
 @repack_exc
 def get_post_range_ts(client, user_info):
     result_recent, result_latest = 'NA', 'NA'
-    try:
-        response = VkResponse(**client.wall.get(owner_id=user_info['id']))
-        if response.count > 0:
-            recent_post = response.items[0]
-            response = VkResponse(**client.wall.get(
-                owner_id=user_info['id'],
-                offset=response.count - 1
-            ))
-            latest_post = response.items[0]
-            result_recent = str(from_unix_time(recent_post['date']))
-            result_latest = str(from_unix_time(latest_post['date']))
-    except Exception as ex:
-        logger.error(f'Couldnt fetch user\'s posts: id={user_info["id"]}, {ex}')
-        # raise
+    if client.config.parse_posts:
+        try:
+            response = VkResponse(**client.wall.get(owner_id=user_info['id']))
+            if response.count > 0:
+                recent_post = response.items[0]
+                response = VkResponse(**client.wall.get(
+                    owner_id=user_info['id'],
+                    offset=response.count - 1
+                ))
+                latest_post = response.items[0]
+                result_recent = str(from_unix_time(recent_post['date']))
+                result_latest = str(from_unix_time(latest_post['date']))
+        except Exception as ex:
+            logger.error(f'Couldnt fetch user\'s posts: id={user_info["id"]}, {ex}')
+            # raise
     return result_recent, result_latest
 
 
