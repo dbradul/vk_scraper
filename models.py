@@ -64,17 +64,6 @@ class VkClientProxy:
                     ))
                 else:
                     logger.error(f'Profile PHONE NUMBER env var doesnt match with PASSWORD (different suffix)')
-        #
-        # for i in range(1, 10):
-        #     env_phone_number_var_name = f'{self.PROFILE_PHONE_NUMBER_PREFIX}_{i}'
-        #     env_password_var_name = f'{self.PROFILE_PASSWORD_PREFIX}_{i}'
-        #     if os.getenv(env_phone_number_var_name):
-        #         accounts.append((
-        #             os.getenv(env_phone_number_var_name),
-        #             os.getenv(env_password_var_name)
-        #         ))
-        #     else:
-        #         break
 
         self._accounts = accounts
 

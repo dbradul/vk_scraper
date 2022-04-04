@@ -63,7 +63,7 @@ data = {
         "wall_comments"
     ],
     "search_count": 1000,
-    "parse_posts": False,
+    "parse_posts": True,
     "resume_from": '',
     "csv_fields": [
         "about",

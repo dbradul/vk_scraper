@@ -24,7 +24,7 @@ RESULT_FILEPATH = 'result.csv'
 
 @login_retrier
 @repack_exc
-def execute_func(func, params, return_count=False):
+def paginate_func(client, func, params, return_count=False):
     data_available = True
     offset = 0
     while data_available:
@@ -125,10 +125,10 @@ def dump_mappings(vk_client: VkClientProxy):
     dumped_unis = {}
 
     city_params = {'country_id': 1, 'need_all': 0, 'count': vk_client.config.search_count}
-    for cities in execute_func(vk_client.database.getCities, city_params):
+    for cities in paginate_func(vk_client, vk_client.database.getCities, city_params):
         for city in cities:
             uni_params = {'country_id': 1, 'city_id': city['id'], 'count': vk_client.config.search_count}
-            for universities in execute_func(vk_client.database.getUniversities, uni_params):
+            for universities in paginate_func(vk_client, vk_client.database.getUniversities, uni_params):
                 for uni in universities:
                     dumped_cities[str(city['id'])] = city['title']
                     dumped_unis[str(uni['id'])] = uni['title']
@@ -173,7 +173,7 @@ def search_by_name(client, filename):
                     'birth_year': birth_date.year
                 })
 
-                for users in execute_func(client.users.search, params):
+                for users in paginate_func(client, client.users.search, params):
                     user_ids = [u[ID_COLUMN_NAME] for u in users]
                     user_infos = vk_get_users(client, user_ids)
                     for user_info in user_infos:
@@ -200,7 +200,7 @@ def find_friends(client: VkClientProxy, filename):
                 logger.info(f'Started fetching friends for user: {user[ID_COLUMN_NAME]}')
                 logger.info('-----------------------------------------------------------')
                 try:
-                    for friends in execute_func(client.friends.get, params):
+                    for friends in paginate_func(client, client.friends.get, params):
                         user_infos = vk_get_users(client, user_ids=friends)
                         for user_info in user_infos:
                             dump_user_info(client, writer, user_info, extra_values=[user[ID_COLUMN_NAME]])
@@ -243,8 +243,8 @@ def main():
         params.update({'count': vk_client.config.search_count})
         users_source = functools.partial(
             # search_entities,
-            execute_func,
-            vk_client.users.search, params, return_count=True
+            paginate_func,
+            vk_client, vk_client.users.search, params, return_count=True
         )
 
     try:
