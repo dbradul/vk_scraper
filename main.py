@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from models import VkResponse, VkClientProxy
 from utils import from_unix_time, unwind_value, logger, read_users_from_csv, login_retrier, repack_exc, \
-    RateLimitException
+    RateLimitException, ProfileIsPrivateException
 
 load_dotenv()
 
@@ -23,6 +23,7 @@ COLUMN_NAME_BDAY = 'Дата'
 RESULT_FILEPATH = 'result.csv'
 
 
+@repack_exc
 def execute_func(func, params, return_count=False):
     data_available = True
     offset = 0
@@ -195,11 +196,15 @@ def find_friends(client: VkClientProxy, filename):
         for count, users in read_users_from_csv(filename, client.config):
             for user in users:
                 params = client.get_params({'user_id': user[ID_COLUMN_NAME]})
-                for friends in execute_func(client.friends.get, params):
-                    user_infos = vk_get_users(client, user_ids=friends)
-                    for user_info in user_infos:
-                        dump_user_info(client, writer, user_info, extra_values=[user[ID_COLUMN_NAME]])
-
+                logger.info(f'Started fetching friends for user: {user[ID_COLUMN_NAME]}')
+                logger.info('-----------------------------------------------------------')
+                try:
+                    for friends in execute_func(client.friends.get, params):
+                        user_infos = vk_get_users(client, user_ids=friends)
+                        for user_info in user_infos:
+                            dump_user_info(client, writer, user_info, extra_values=[user[ID_COLUMN_NAME]])
+                except ProfileIsPrivateException as ex:
+                    logger.error(f"Couldn't fetch friends for private profile: {user[ID_COLUMN_NAME]}")
 
 def main():
     global ID_COLUMN_NAME

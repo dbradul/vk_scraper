@@ -18,8 +18,13 @@ logger.addHandler(logging.StreamHandler())
 
 
 ERROR_RATE_LIMIT_EXCEEDED = 29
+ERROR_PROFILE_IS_PRIVATE = 30
 class RateLimitException(Exception):
     pass
+
+class ProfileIsPrivateException(Exception):
+    pass
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 def from_unix_time(ts):
@@ -63,12 +68,13 @@ def repack_exc(func):
     @functools.wraps(func)
     def inner(client, *args, **kwargs):
         try:
-            result = func(client, *args, **kwargs)
-            yield from result
+            yield from func(client, *args, **kwargs)
 
         except ApiError as ex:
             if ex.code == ERROR_RATE_LIMIT_EXCEEDED:
                 raise RateLimitException(str(ex))
+            elif ex.code == ERROR_PROFILE_IS_PRIVATE:
+                raise ProfileIsPrivateException(str(ex))
             else:
                 raise
     return inner
