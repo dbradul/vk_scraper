@@ -204,8 +204,9 @@ def find_friends(client: VkClientProxy, filename):
                         user_infos = vk_get_users(client, user_ids=friends)
                         for user_info in user_infos:
                             dump_user_info(client, writer, user_info, extra_values=[user[ID_COLUMN_NAME]])
-                except ProfileIsPrivateException as ex:
-                    logger.error(f"Couldn't fetch friends for private profile: {user[ID_COLUMN_NAME]}")
+                except Exception as ex:
+                    logger.error(f"Couldn't fetch friends for profile: {user[ID_COLUMN_NAME]}")
+
 
 def main():
     global ID_COLUMN_NAME
