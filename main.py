@@ -22,7 +22,7 @@ COLUMN_NAME_SURNAME = 'Прізвище'
 COLUMN_NAME_BDAY = 'Дата'
 RESULT_FILEPATH = 'result.csv'
 
-
+@login_retrier
 @repack_exc
 def execute_func(func, params, return_count=False):
     data_available = True

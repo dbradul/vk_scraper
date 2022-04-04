@@ -51,17 +51,30 @@ class VkClientProxy:
             self._obj = instance
 
     def load_accounts(self):
+        from utils import logger
+
         accounts = []
-        for i in range(1, 10):
-            env_phone_number_var_name = f'{self.PROFILE_PHONE_NUMBER_PREFIX}_{i}'
-            env_password_var_name = f'{self.PROFILE_PASSWORD_PREFIX}_{i}'
-            if os.getenv(env_phone_number_var_name):
-                accounts.append((
-                    os.getenv(env_phone_number_var_name),
-                    os.getenv(env_password_var_name)
-                ))
-            else:
-                break
+        for k, v in os.environ.items():
+            if k.startswith(self.PROFILE_PHONE_NUMBER_PREFIX):
+                suffix = k.replace(f'{self.PROFILE_PHONE_NUMBER_PREFIX}', '')
+                if os.environ.get(f'{self.PROFILE_PASSWORD_PREFIX}{suffix}'):
+                    accounts.append((
+                        os.getenv(k),
+                        os.getenv(f'{self.PROFILE_PASSWORD_PREFIX}{suffix}')
+                    ))
+                else:
+                    logger.error(f'Profile PHONE NUMBER env var doesnt match with PASSWORD (different suffix)')
+        #
+        # for i in range(1, 10):
+        #     env_phone_number_var_name = f'{self.PROFILE_PHONE_NUMBER_PREFIX}_{i}'
+        #     env_password_var_name = f'{self.PROFILE_PASSWORD_PREFIX}_{i}'
+        #     if os.getenv(env_phone_number_var_name):
+        #         accounts.append((
+        #             os.getenv(env_phone_number_var_name),
+        #             os.getenv(env_password_var_name)
+        #         ))
+        #     else:
+        #         break
 
         self._accounts = accounts
 
