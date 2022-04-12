@@ -48,7 +48,7 @@ def unwind_value(d, prefix=''):
     return result
 
 
-def read_users_from_csv(filename, config, column='id'):
+def read_from_csv(filename, config, column='id'):
     with open(filename, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f, quotechar='"', delimiter=',')
         users = [line for line in reader]

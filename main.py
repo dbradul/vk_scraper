@@ -1,3 +1,5 @@
+import os
+
 import csv
 import functools
 import json
@@ -10,7 +12,7 @@ from pprint import pprint as pp
 from dotenv import load_dotenv
 
 from models import VkResponse, VkClientProxy
-from utils import from_unix_time, unwind_value, logger, read_users_from_csv, login_retrier, repack_exc, \
+from utils import from_unix_time, unwind_value, logger, read_from_csv, login_retrier, repack_exc, \
     RateLimitException, ProfileIsPrivateException
 
 load_dotenv()
@@ -20,6 +22,8 @@ COLUMN_NAME_PARENT_ID = 'ParentId'
 COLUMN_NAME_NAME = 'Імя'
 COLUMN_NAME_SURNAME = 'Прізвище'
 COLUMN_NAME_BDAY = 'Дата'
+COLUMN_NAME_GROUP_URL = 'GroupUrl'
+COLUMN_NAME_GROUP_NAME = 'GroupName'
 RESULT_FILEPATH = 'result.csv'
 
 @login_retrier
@@ -163,7 +167,7 @@ def search_by_name(client, filename):
         writer = csv.writer(f)
         writer.writerow(EXTRA_FIELDS + client.config.csv_fields + client.config.custom_csv_fields)
 
-        for count, users in read_users_from_csv(filename, client.config):
+        for count, users in read_from_csv(filename, client.config):
             for user in users:
                 birth_date = datetime.strptime(user.get(COLUMN_NAME_BDAY, ''), '%d.%m.%Y')
                 params= client.get_params({
@@ -194,7 +198,7 @@ def find_friends(client: VkClientProxy, filename):
         writer = csv.writer(f)
         writer.writerow(EXTRA_FIELDS + client.config.csv_fields + client.config.custom_csv_fields)
 
-        for count, users in read_users_from_csv(filename, client.config):
+        for count, users in read_from_csv(filename, client.config):
             for user in users:
                 params = client.get_params({'user_id': user[ID_COLUMN_NAME]})
                 logger.info(f'Started fetching friends for user: {user[ID_COLUMN_NAME]}')
@@ -206,6 +210,32 @@ def find_friends(client: VkClientProxy, filename):
                             dump_user_info(client, writer, user_info, extra_values=[user[ID_COLUMN_NAME]])
                 except Exception as ex:
                     logger.error(f"Couldn't fetch friends for profile: {user[ID_COLUMN_NAME]}")
+
+
+def parse_groups(client: VkClientProxy, filename):
+    EXTRA_FIELDS = [
+        COLUMN_NAME_GROUP_URL,
+        COLUMN_NAME_GROUP_NAME
+    ]
+    with open(RESULT_FILEPATH, 'w+', newline='') as f:
+        # writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+        writer = csv.writer(f)
+        writer.writerow(EXTRA_FIELDS + client.config.csv_fields + client.config.custom_csv_fields)
+
+        for count, lines in read_from_csv(filename, client.config):
+            for line in lines:
+                group_id = line[ID_COLUMN_NAME].split('/')[-1]
+                params = client.get_params({'group_id': group_id})
+                group_info = client.groups.getById(**params)[0].get('name')
+                logger.info(f'Started fetching members for group: {line[ID_COLUMN_NAME]}')
+                logger.info('-----------------------------------------------------------')
+                try:
+                    for members in paginate_func(client, client.groups.getMembers, params):
+                        user_infos = vk_get_users(client, user_ids=members)
+                        for user_info in user_infos:
+                            dump_user_info(client, writer, user_info, extra_values=[line[ID_COLUMN_NAME], group_info])
+                except Exception as ex:
+                    logger.error(f"Couldn't fetch members for group '{line[ID_COLUMN_NAME]}': {ex}")
 
 
 def main():
@@ -234,10 +264,18 @@ def main():
                 return
             else:
                 logger.error('Filepath is missing for "find_friends" mode')
+        elif param == '--parse_groups':
+            if len(sys.argv) > 2:
+                filepath = sys.argv[2]
+                ID_COLUMN_NAME = 'GroupURL'
+                parse_groups(vk_client, filepath)
+                return
+            else:
+                logger.error('Filepath is missing for "parse_groups" mode')
         else:
             if len(sys.argv) > 2:
                 ID_COLUMN_NAME = sys.argv[2]
-            users_source = functools.partial(read_users_from_csv, param, vk_client.config, ID_COLUMN_NAME)
+            users_source = functools.partial(read_from_csv, param, vk_client.config, ID_COLUMN_NAME)
     else:
         params = {k: v for k, v in vk_client.config.search_criteria.items() if v}
         params.update({'count': vk_client.config.search_count})

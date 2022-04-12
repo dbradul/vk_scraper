@@ -1,4 +1,5 @@
 import os
+import requests
 
 import vk_api
 from pydantic import BaseModel
@@ -76,8 +77,24 @@ class VkClientProxy:
         return result
 
     def auth(self):
-        self._session = vk_api.VkApi(*self.next_account())
-        self._session.auth()
+        try:
+            self._session = vk_api.VkApi(*self.next_account())
+            self._session.auth()
+            self.set_proxy_obj(self._session.get_api())
+            self.config = Config(**config.data)
+        except Exception as ex:
+            self.direct_auth(app_id=os.getenv('VK_APP_ID'), client_secret=os.getenv('VK_APP_SECRET'))
+
+    def direct_auth(self, **kw_args):
+        username, password = self.next_account()
+        app_id, client_secret = kw_args.get('app_id'), kw_args.get('client_secret')
+        self._session = vk_api.VkApi(*self.next_account(), **kw_args)
+        AUTH_URL = f'https://oauth.vk.com/token?grant_type=password&client_id={app_id}&client_secret={client_secret}&'
+        resp = requests.get(AUTH_URL + f'username={username}&password={password}')
+        if resp.status_code != 200:
+            raise RuntimeError(f'Not Authorized {resp.status_code}, {resp.text}')
+        self._session.token = resp.json()
+        # self._session.auth(reauth=True, token_only=True)
         self.set_proxy_obj(self._session.get_api())
         self.config = Config(**config.data)
 
