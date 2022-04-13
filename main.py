@@ -1,3 +1,5 @@
+import re
+
 import os
 
 import csv
@@ -225,6 +227,7 @@ def parse_groups(client: VkClientProxy, filename):
         for count, lines in read_from_csv(filename, client.config):
             for line in lines:
                 group_id = line[ID_COLUMN_NAME].split('/')[-1]
+                group_id = re.sub('^club', '', group_id)
                 params = client.get_params({'group_id': group_id})
                 group_info = client.groups.getById(**params)[0].get('name')
                 logger.info(f'Started fetching members for group: {line[ID_COLUMN_NAME]}')
