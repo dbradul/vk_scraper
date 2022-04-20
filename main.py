@@ -1,7 +1,5 @@
-import re
-
 import os
-
+import re
 import csv
 import functools
 import json
@@ -13,9 +11,13 @@ from pprint import pprint as pp
 
 from dotenv import load_dotenv
 
-from models import VkResponse, VkClientProxy
-from utils import from_unix_time, unwind_value, logger, read_from_csv, login_retrier, repack_exc, \
-    RateLimitException, ProfileIsPrivateException
+import config
+
+# from models import VkResponse, VkClientProxy
+from vk_common.utils import from_unix_time, unwind_value, logger, read_from_csv, login_retrier, repack_exc, \
+    login_enforcer, RateLimitException
+from vk_common.models import VkResponse, VkClientProxy
+# from vk_common.utils import logger, login_retrier, repack_exc, login_enforcer
 
 load_dotenv()
 
@@ -27,6 +29,10 @@ COLUMN_NAME_BDAY = 'Дата'
 COLUMN_NAME_GROUP_URL = 'GroupUrl'
 COLUMN_NAME_GROUP_NAME = 'GroupName'
 RESULT_FILEPATH = 'result.csv'
+
+NUM_ACCOUNTS_THRESHOLD = int(os.getenv('NUM_ACCOUNTS_THRESHOLD'))
+NUM_CALLS_THRESHOLD = int(os.getenv('NUM_CALLS_THRESHOLD'))
+
 
 @login_retrier
 @repack_exc
@@ -84,6 +90,7 @@ def normalize_row(row, config):
 
 
 @login_retrier
+@repack_exc
 def vk_get_users(vk_client, user_ids):
     return vk_client.users.get(
         user_ids=user_ids,
@@ -244,7 +251,11 @@ def parse_groups(client: VkClientProxy, filename):
 def main():
     global ID_COLUMN_NAME
 
-    vk_client = VkClientProxy()
+    vk_client = VkClientProxy(
+        num_calls_threshold=NUM_CALLS_THRESHOLD,
+        num_accounts_threshold=NUM_ACCOUNTS_THRESHOLD,
+        config_data=config.data
+    )
     vk_client.load_accounts()
     vk_client.auth()
 
@@ -256,6 +267,7 @@ def main():
         elif param == '--search_by_name':
             if len(sys.argv) > 2:
                 filepath = sys.argv[2]
+                vk_client.call_domain = 'users,wall'
                 search_by_name(vk_client, filepath)
                 return
             else:
@@ -263,6 +275,7 @@ def main():
         elif param == '--find_friends':
             if len(sys.argv) > 2:
                 filepath = sys.argv[2]
+                vk_client.call_domain = 'users,wall'
                 find_friends(vk_client, filepath)
                 return
             else:
@@ -271,6 +284,7 @@ def main():
             if len(sys.argv) > 2:
                 filepath = sys.argv[2]
                 ID_COLUMN_NAME = 'GroupURL'
+                vk_client.call_domain = 'users,wall'
                 parse_groups(vk_client, filepath)
                 return
             else:

@@ -4,9 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-vk-api = "*"
-pydantic = "*"
-python-dotenv = "*"
+vk-common = {editable = true, git = "ssh://git@github.com/dbradul/vk_common.git"}
 
 [dev-packages]
 
