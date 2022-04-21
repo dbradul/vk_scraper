@@ -136,7 +136,7 @@
         "vk-common": {
             "editable": true,
             "git": "ssh://git@github.com/dbradul/vk_common.git",
-            "ref": "921334cad8af3adb12aada7303c5f2a38760d842"
+            "ref": "5daa0ab5cef4ce353753591d02168e67eed2c225"
         }
     },
     "develop": {}

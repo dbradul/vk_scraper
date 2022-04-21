@@ -15,7 +15,7 @@ import config
 
 # from models import VkResponse, VkClientProxy
 from vk_common.utils import from_unix_time, unwind_value, logger, read_from_csv, login_retrier, repack_exc, \
-    login_enforcer, RateLimitException
+    RateLimitException
 from vk_common.models import VkResponse, VkClientProxy
 # from vk_common.utils import logger, login_retrier, repack_exc, login_enforcer
 
