@@ -257,7 +257,7 @@ def main():
         config_data=config.data
     )
     vk_client.load_accounts()
-    vk_client.auth()
+    vk_client.auth_until_success()
 
     if len(sys.argv) > 1:
         param = sys.argv[1]
