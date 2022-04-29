@@ -1,23 +1,21 @@
-import os
-import re
+from collections import defaultdict
+
 import csv
 import functools
 import json
+import os
+import re
 import sys
-from collections import defaultdict
 from datetime import datetime
+from dotenv import load_dotenv
 from io import StringIO
 from pprint import pprint as pp
-
-from dotenv import load_dotenv
+from vk_common.models import VkResponse, VkClientProxy
+from vk_common.utils import from_unix_time, unwind_value, logger, read_from_csv, login_retrier, repack_exc, \
+    RateLimitException
 
 import config
 
-# from models import VkResponse, VkClientProxy
-from vk_common.utils import from_unix_time, unwind_value, logger, read_from_csv, login_retrier, repack_exc, \
-    RateLimitException
-from vk_common.models import VkResponse, VkClientProxy
-# from vk_common.utils import logger, login_retrier, repack_exc, login_enforcer
 
 load_dotenv()
 
