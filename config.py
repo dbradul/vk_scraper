@@ -1,6 +1,6 @@
 data = {
     "search_criteria": {
-        "q": "Danila Malerenko",
+        "q": "Северодвинск",
         # "hometown": "Киев",
         # "online": 1,
         # "university": 2903,

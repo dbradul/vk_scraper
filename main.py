@@ -14,6 +14,7 @@ from vk_common.models import VkResponse, VkClientProxy
 from vk_common.utils import from_unix_time, unwind_value, logger, read_from_csv, login_retrier, repack_exc, \
     RateLimitException
 
+from vk_api.tools import VkTools
 import config
 
 
@@ -246,6 +247,25 @@ def parse_groups(client: VkClientProxy, filename):
                     logger.error(f"Couldn't fetch members for group '{line[ID_COLUMN_NAME]}': {ex}")
 
 
+def search_groups(client):
+    EXTRA_FIELDS = [
+        COLUMN_NAME_GROUP_NAME,
+        COLUMN_NAME_GROUP_URL
+    ]
+    with open(RESULT_FILEPATH, 'w+', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(EXTRA_FIELDS)
+        params = client.get_params(client.get_search_params({'type': 'group'}))
+        # for groups in paginate_func(client, client.groups.search, params):
+        tools = VkTools(client._obj)
+        for group in tools.get_all_iter('groups.search', max_count=100, values=params):
+            writer.writerow((
+                f'https://vk.com/{group["screen_name"]}',
+                group['name']
+            ))
+
+
+
 def main():
     global ID_COLUMN_NAME
 
@@ -261,6 +281,10 @@ def main():
         param = sys.argv[1]
         if param == 'dump':
             dump_mappings(vk_client)
+            return
+        elif param == '--search_groups':
+            vk_client.call_domain = 'groups'
+            search_groups(vk_client)
             return
         elif param == '--search_by_name':
             if len(sys.argv) > 2:

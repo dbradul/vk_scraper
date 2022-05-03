@@ -128,15 +128,15 @@
         },
         "vk-api": {
             "hashes": [
-                "sha256:68f4bf836780669790c1a5b4e1c02523d981f1274bfd17bf648a6997122a579c",
-                "sha256:e88f69f4df4378995a43d00283c8c80a7d4c2f36aecacae1ff1e9fe4562f9e0d"
+                "sha256:11c731e214ebc7fa911db81efb021f97587493a5402b992f24748fe1cd9d7afc",
+                "sha256:d0ae766fa93a40d47c5da045d94201721bf766dbde122a1d2253516b35c5edf3"
             ],
-            "version": "==11.9.7"
+            "version": "==11.9.8"
         },
         "vk-common": {
             "editable": true,
             "git": "ssh://git@github.com/dbradul/vk_common.git",
-            "ref": "d804ec28298d22788a6522f501474160bf0577f5"
+            "ref": "0b414d7a4e07f4317f63d1c033a71963d6be0bcc"
         }
     },
     "develop": {}
