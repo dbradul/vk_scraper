@@ -1,6 +1,6 @@
 data = {
     "search_criteria": {
-        "q": "Северодвинск",
+        "q": "в/ч",
         # "hometown": "Киев",
         # "online": 1,
         # "university": 2903,

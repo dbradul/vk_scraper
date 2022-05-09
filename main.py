@@ -133,26 +133,32 @@ def dump_user_info(client, writer, user_info, extra_values=None):
 
 
 def dump_mappings(vk_client: VkClientProxy):
-    dumped_cities = {}
-    dumped_unis = {}
+    fetched_regions = {}
+    fetched_cities = {}
+    fetched_unis = {}
 
-    city_params = {'country_id': 1, 'need_all': 0, 'count': vk_client.config.search_count}
-    for cities in paginate_func(vk_client, vk_client.database.getCities, city_params):
-        for city in cities:
-            uni_params = {'country_id': 1, 'city_id': city['id'], 'count': vk_client.config.search_count}
-            for universities in paginate_func(vk_client, vk_client.database.getUniversities, uni_params):
-                for uni in universities:
-                    dumped_cities[str(city['id'])] = city['title']
-                    dumped_unis[str(uni['id'])] = uni['title']
+    for region in vk_client.get_iter('database.getRegions', params={'country_id': 1}):
+        if region['title']:
+            fetched_regions[str(region['id'])] = region['title']
 
-    with open('./mappings.json', 'r+') as f:
-        mappings = defaultdict(dict)
-        if content := f.read():
-            mappings.update(json.loads(content))
+    for dumped_region in fetched_regions:
+        city_params = {'country_id': 1, 'region_id': dumped_region, 'need_all': 0}
+        for city in vk_client.get_iter('database.getCities', params=city_params):
+            if city['title'] and city['id'] < 1000000:
+                fetched_cities[str(city['id'])] = city['title']
+
+    for dumped_city in fetched_cities:
+        uni_params = {'country_id': 1, 'city_id': dumped_city}
+        for uni in vk_client.get_iter('database.getUniversities', params=uni_params):
+            fetched_unis[str(uni['id'])] = uni['title'].replace('\r\n', '')
+
+    # load existing and upsert fetched values
+    mappings = load_dumpings()
 
     with open('./mappings.json', 'w+') as f:
-        mappings['city'].update(dumped_cities)
-        mappings['university'].update(dumped_unis)
+        mappings['city'].update(fetched_cities)
+        mappings['university'].update(fetched_unis)
+        mappings['dumped_regions'].update(fetched_regions)
 
         new_mappings = {}
         for map_name, map_dict in mappings.items():
@@ -162,6 +168,14 @@ def dump_mappings(vk_client: VkClientProxy):
         pp(new_mappings, width=300, stream=stream, sort_dicts=False)
         stream.seek(0)
         f.write(stream.read().replace("'", '"'))
+
+
+def load_dumpings(scope=None):
+    with open('./mappings.json', 'r+') as f:
+        mappings = defaultdict(dict)
+        if content := f.read():
+            mappings.update(json.loads(content))
+    return mappings if scope is None else mappings.get(scope)
 
 
 def search_by_name(client, filename):
@@ -252,17 +266,22 @@ def search_groups(client):
         COLUMN_NAME_GROUP_NAME,
         COLUMN_NAME_GROUP_URL
     ]
+    cities = load_dumpings('city')
     with open(RESULT_FILEPATH, 'w+', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(EXTRA_FIELDS)
-        params = client.get_params(client.get_search_params({'type': 'group'}))
-        # for groups in paginate_func(client, client.groups.search, params):
-        tools = VkTools(client._obj)
-        for group in tools.get_all_iter('groups.search', max_count=100, values=params):
-            writer.writerow((
-                f'https://vk.com/{group["screen_name"]}',
-                group['name']
-            ))
+        params = dict(**client.get_search_params(),
+                      type='group')
+        search_query = client.get_search_params().get('q')
+        for city in cities:
+            params.update(city_id=city)
+            for group in client.get_iter('groups.search', params=params):
+                if search_query and search_query in group['name'].lower():
+                    logger.info(f'Dumped group from city {cities[city]}: \'{group["name"]}\'')
+                    writer.writerow((
+                        f'https://vk.com/{group["screen_name"]}',
+                        group['name']
+                    ))
 
 
 
