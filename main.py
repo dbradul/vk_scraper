@@ -27,6 +27,7 @@ COLUMN_NAME_SURNAME = 'Прізвище'
 COLUMN_NAME_BDAY = 'Дата'
 COLUMN_NAME_GROUP_URL = 'GroupUrl'
 COLUMN_NAME_GROUP_NAME = 'GroupName'
+COLUMN_NAME_CITY = 'City'
 RESULT_FILEPATH = 'result.csv'
 
 NUM_ACCOUNTS_THRESHOLD = int(os.getenv('NUM_ACCOUNTS_THRESHOLD'))
@@ -263,6 +264,7 @@ def parse_groups(client: VkClientProxy, filename):
 
 def search_groups(client):
     EXTRA_FIELDS = [
+        COLUMN_NAME_CITY,
         COLUMN_NAME_GROUP_NAME,
         COLUMN_NAME_GROUP_URL
     ]
@@ -279,6 +281,7 @@ def search_groups(client):
                 if search_query and search_query in group['name'].lower():
                     logger.info(f'Dumped group from city {cities[city]}: \'{group["name"]}\'')
                     writer.writerow((
+                        cities[city],
                         f'https://vk.com/{group["screen_name"]}',
                         group['name']
                     ))
