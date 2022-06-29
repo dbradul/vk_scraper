@@ -247,6 +247,7 @@ def parse_groups(client: VkClientProxy, filename):
 
         for count, lines in read_from_csv(filename, client.config):
             for line in lines:
+                line = {k.lower(): v for k, v in line.items()}
                 group_id = line[ID_COLUMN_NAME].split('/')[-1]
                 group_id = re.sub('^club', '', group_id)
                 params = client.get_params({'group_id': group_id})
@@ -327,7 +328,7 @@ def main():
         elif param == '--parse_groups':
             if len(sys.argv) > 2:
                 filepath = sys.argv[2]
-                ID_COLUMN_NAME = 'GroupURL'
+                ID_COLUMN_NAME = 'groupurl'
                 vk_client.call_domain = 'users,wall'
                 parse_groups(vk_client, filepath)
                 return
