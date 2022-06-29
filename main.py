@@ -251,10 +251,10 @@ def parse_groups(client: VkClientProxy, filename):
                 group_id = line[ID_COLUMN_NAME].split('/')[-1]
                 group_id = re.sub('^club', '', group_id)
                 params = client.get_params({'group_id': group_id})
-                group_info = client.groups.getById(**params)[0].get('name')
-                logger.info(f'Started fetching members for group: {line[ID_COLUMN_NAME]}')
-                logger.info('-----------------------------------------------------------')
                 try:
+                    group_info = client.groups.getById(**params)[0].get('name')
+                    logger.info(f'Started fetching members for group: {line[ID_COLUMN_NAME]}')
+                    logger.info('-----------------------------------------------------------')
                     for members in paginate_func(client, client.groups.getMembers, params):
                         user_infos = vk_get_users(client, user_ids=members)
                         for user_info in user_infos:
