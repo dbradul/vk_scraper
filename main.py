@@ -27,6 +27,7 @@ COLUMN_NAME_SURNAME = 'Прізвище'
 COLUMN_NAME_BDAY = 'Дата'
 COLUMN_NAME_GROUP_URL = 'GroupUrl'
 COLUMN_NAME_GROUP_NAME = 'GroupName'
+COLUMN_NAME_GROUP_CITY = 'City'
 COLUMN_NAME_CITY = 'City'
 RESULT_FILEPATH = 'result.csv'
 
@@ -237,6 +238,7 @@ def find_friends(client: VkClientProxy, filename):
 
 def parse_groups(client: VkClientProxy, filename):
     EXTRA_FIELDS = [
+        COLUMN_NAME_GROUP_CITY,
         COLUMN_NAME_GROUP_URL,
         COLUMN_NAME_GROUP_NAME
     ]
@@ -253,12 +255,14 @@ def parse_groups(client: VkClientProxy, filename):
                 params = client.get_params({'group_id': group_id})
                 try:
                     group_info = client.groups.getById(**params)[0].get('name')
+                    group_city = line.get(COLUMN_NAME_GROUP_CITY.lower())
                     logger.info(f'Started fetching members for group: {line[ID_COLUMN_NAME]}')
                     logger.info('-----------------------------------------------------------')
                     for members in paginate_func(client, client.groups.getMembers, params):
                         user_infos = vk_get_users(client, user_ids=members)
                         for user_info in user_infos:
-                            dump_user_info(client, writer, user_info, extra_values=[line[ID_COLUMN_NAME], group_info])
+                            dump_user_info(client, writer, user_info,
+                                           extra_values=[group_city, line[ID_COLUMN_NAME], group_info])
                 except Exception as ex:
                     logger.error(f"Couldn't fetch members for group '{line[ID_COLUMN_NAME]}': {ex}")
 
